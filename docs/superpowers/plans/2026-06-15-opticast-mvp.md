@@ -1867,6 +1867,18 @@ git tag -a v0.1.0 -m "Opticast MVP: phone camera RTMP/SRT broadcaster"
 
 ---
 
+## Execution outcome (2026-06-16)
+
+Tasks 0–11 implemented and committed; full unit suite (27 tests, 6 classes) passes and the debug APK assembles. **Version corrections discovered during the build** (the pre-build estimates in this plan were wrong — RootEncoder 2.7.4 forced them):
+
+- **compileSdk/targetSdk → 36** (RootEncoder 2.7.4 AAR metadata requires compiling against API 36).
+- **AGP → 8.11.1**, **Gradle wrapper → 8.13** (needed to support compileSdk 36).
+- **Kotlin → 2.3.21** (RootEncoder 2.7.4 ships Kotlin 2.3 metadata + pulls kotlin-stdlib 2.3.21 / coroutines 1.11.0; older Kotlin can't read it). Required migrating `kotlinOptions { jvmTarget }` → the `kotlin { compilerOptions { jvmTarget } }` DSL.
+- **`gradle.properties`** with `android.useAndroidX=true` was required (omitted from the original scaffold).
+- **RootEncoder helper API:** in 2.7.4 camera/audio control is on the *sources*, not `StreamBase`. Correct calls: `(stream.videoSource as Camera2Source).switchCamera()/enableLantern()/disableLantern()`, `(stream.audioSource as MicrophoneSource).mute()/unMute()`, and `stream.setVideoBitrateOnFly(int)` (on StreamBase). Tap-to-focus/zoom (deferred) use `Camera2Source.tapToFocus(view, ev)` / `setZoom(ev)`.
+
+Task 12 (on-device camera/streaming verification) still pending — requires a physical Android device.
+
 ## Notes for the implementer
 
 - **Reconnect wiring:** Tasks 6 builds the controller and Task 12 Step 5 tests recovery, but auto-reconnect is fully wired only when the service observes `onConnectionFailed`/`onDisconnect` and invokes `ReconnectController.run { broadcaster.start(currentConnection) }`. If Step 5 shows no auto-recovery, add that observer in `StreamingService` (or a small `StreamCoordinator`) — it's a known integration point, not a new design.

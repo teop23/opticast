@@ -10,7 +10,10 @@ This started as the streaming component for [MotoLive](../README.md) (motorcycle
 
 ## Status
 
-**Design approved, pre-implementation.** See [design spec](docs/superpowers/specs/2026-06-15-camera-broadcaster-design.md). Implementation plan is the next step.
+**MVP implemented — builds green, 27 unit tests passing, debug APK assembles.** Not yet verified on a physical device (camera/streaming on-device test pending). See [design spec](docs/superpowers/specs/2026-06-15-camera-broadcaster-design.md) and [implementation plan](docs/superpowers/plans/2026-06-15-opticast-mvp.md).
+
+**Build:** `./gradlew testDebugUnitTest` (unit tests) · `./gradlew assembleDebug` (APK) · `./gradlew installDebug` (to a connected device).
+**Toolchain:** AGP 8.11.1, Gradle 8.13, Kotlin 2.3.21, compileSdk 36, JDK 17+ (RootEncoder 2.7.4 requires these).
 
 ## Features (v1 MVP)
 
