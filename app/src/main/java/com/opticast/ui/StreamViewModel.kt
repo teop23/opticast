@@ -16,6 +16,7 @@ data class UiState(
     val selected: Connection? = null,
     val muted: Boolean = false,
     val torch: Boolean = false,
+    val previewEnabled: Boolean = false,   // off by default to save battery/CPU
     val connections: List<Connection> = emptyList()
 )
 
@@ -63,6 +64,8 @@ class StreamViewModel(
         broadcaster.setTorch(next)
         _ui.update { it.copy(torch = next) }
     }
+
+    fun togglePreview() = _ui.update { it.copy(previewEnabled = !it.previewEnabled) }
 
     suspend fun save(c: Connection) = repository.save(c)
     suspend fun delete(id: String) = repository.delete(id)

@@ -7,12 +7,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.opticast.model.StreamState
 import com.opticast.stream.RootEncoderBroadcaster
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun LiveScreen(vm: StreamViewModel, onConnections: () -> Unit) {
     val ui by vm.uiState.collectAsStateWithLifecycle()
@@ -21,26 +23,36 @@ fun LiveScreen(vm: StreamViewModel, onConnections: () -> Unit) {
         ui.streamState is StreamState.Reconnecting
 
     Box(Modifier.fillMaxSize()) {
-        // TextureView composites in the normal view hierarchy (unlike a SurfaceView, which
-        // renders on a separate surface behind the opaque Compose window and shows black).
-        AndroidView(
-            factory = { ctx ->
-                TextureView(ctx).apply {
-                    surfaceTextureListener = object : TextureView.SurfaceTextureListener {
-                        override fun onSurfaceTextureAvailable(s: SurfaceTexture, w: Int, h: Int) {
-                            (vm.broadcasterForPreview() as? RootEncoderBroadcaster)?.attachPreview(this@apply)
+        // Preview is opt-in: rendering it costs ~1.3 extra CPU cores. When hidden, the
+        // TextureView leaves composition -> detachPreview() stops the GL render; streaming
+        // (if active) continues headless.
+        if (ui.previewEnabled) {
+            AndroidView(
+                factory = { ctx ->
+                    TextureView(ctx).apply {
+                        surfaceTextureListener = object : TextureView.SurfaceTextureListener {
+                            override fun onSurfaceTextureAvailable(s: SurfaceTexture, w: Int, h: Int) {
+                                (vm.broadcasterForPreview() as? RootEncoderBroadcaster)?.attachPreview(this@apply)
+                            }
+                            override fun onSurfaceTextureSizeChanged(s: SurfaceTexture, w: Int, h: Int) {}
+                            override fun onSurfaceTextureDestroyed(s: SurfaceTexture): Boolean {
+                                (vm.broadcasterForPreview() as? RootEncoderBroadcaster)?.detachPreview()
+                                return true
+                            }
+                            override fun onSurfaceTextureUpdated(s: SurfaceTexture) {}
                         }
-                        override fun onSurfaceTextureSizeChanged(s: SurfaceTexture, w: Int, h: Int) {}
-                        override fun onSurfaceTextureDestroyed(s: SurfaceTexture): Boolean {
-                            (vm.broadcasterForPreview() as? RootEncoderBroadcaster)?.detachPreview()
-                            return true
-                        }
-                        override fun onSurfaceTextureUpdated(s: SurfaceTexture) {}
                     }
-                }
-            },
-            modifier = Modifier.fillMaxSize()
-        )
+                },
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            Text(
+                "Preview off (saves battery)\nTap Preview to show the camera",
+                modifier = Modifier.align(Alignment.Center).padding(32.dp),
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
 
         // Status overlay (top-left)
         Column(Modifier.align(Alignment.TopStart).padding(12.dp)) {
@@ -58,16 +70,19 @@ fun LiveScreen(vm: StreamViewModel, onConnections: () -> Unit) {
             ui.selected?.let { Text("Target: ${it.name}") }
         }
 
-        // Controls (bottom): a row of secondary actions over a full-width primary button.
+        // Controls (bottom): wrapping row of secondary actions over a full-width primary button.
         Column(
             Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Row(
+            FlowRow(
                 Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 TextButton(onClick = onConnections) { Text("Targets") }
+                TextButton(onClick = { vm.togglePreview() }) {
+                    Text(if (ui.previewEnabled) "Hide" else "Preview")
+                }
                 TextButton(onClick = { vm.switchCamera() }) { Text("Flip") }
                 TextButton(onClick = { vm.toggleMute() }) { Text(if (ui.muted) "Unmute" else "Mute") }
                 TextButton(onClick = { vm.toggleTorch() }) { Text("Torch") }
