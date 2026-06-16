@@ -1,7 +1,7 @@
 package com.opticast.ui
 
-import android.view.SurfaceHolder
-import android.view.SurfaceView
+import android.graphics.SurfaceTexture
+import android.view.TextureView
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -16,28 +16,33 @@ import com.opticast.stream.RootEncoderBroadcaster
 @Composable
 fun LiveScreen(vm: StreamViewModel, onConnections: () -> Unit) {
     val ui by vm.uiState.collectAsStateWithLifecycle()
+    val streaming = ui.streamState is StreamState.Live ||
+        ui.streamState is StreamState.Connecting ||
+        ui.streamState is StreamState.Reconnecting
 
     Box(Modifier.fillMaxSize()) {
-        // Preview surface. attachPreview must wait until the Surface is actually valid
-        // (surfaceCreated) — calling it in the factory crashes RootEncoder with
-        // "Make sure the Surface is valid".
+        // TextureView composites in the normal view hierarchy (unlike a SurfaceView, which
+        // renders on a separate surface behind the opaque Compose window and shows black).
         AndroidView(
             factory = { ctx ->
-                SurfaceView(ctx).apply {
-                    holder.addCallback(object : SurfaceHolder.Callback {
-                        override fun surfaceCreated(holder: SurfaceHolder) {
+                TextureView(ctx).apply {
+                    surfaceTextureListener = object : TextureView.SurfaceTextureListener {
+                        override fun onSurfaceTextureAvailable(s: SurfaceTexture, w: Int, h: Int) {
                             (vm.broadcasterForPreview() as? RootEncoderBroadcaster)?.attachPreview(this@apply)
                         }
-                        override fun surfaceChanged(h: SurfaceHolder, f: Int, w: Int, hh: Int) {}
-                        override fun surfaceDestroyed(holder: SurfaceHolder) {
+                        override fun onSurfaceTextureSizeChanged(s: SurfaceTexture, w: Int, h: Int) {}
+                        override fun onSurfaceTextureDestroyed(s: SurfaceTexture): Boolean {
                             (vm.broadcasterForPreview() as? RootEncoderBroadcaster)?.detachPreview()
+                            return true
                         }
-                    })
+                        override fun onSurfaceTextureUpdated(s: SurfaceTexture) {}
+                    }
                 }
             },
             modifier = Modifier.fillMaxSize()
         )
 
+        // Status overlay (top-left)
         Column(Modifier.align(Alignment.TopStart).padding(12.dp)) {
             val label = when (val s = ui.streamState) {
                 StreamState.Idle -> "Idle"
@@ -53,19 +58,24 @@ fun LiveScreen(vm: StreamViewModel, onConnections: () -> Unit) {
             ui.selected?.let { Text("Target: ${it.name}") }
         }
 
-        Row(
-            Modifier.align(Alignment.BottomCenter).padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        // Controls (bottom): a row of secondary actions over a full-width primary button.
+        Column(
+            Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Button(onClick = onConnections) { Text("Targets") }
-            Button(onClick = { vm.switchCamera() }) { Text("Flip") }
-            Button(onClick = { vm.toggleMute() }) { Text(if (ui.muted) "Unmute" else "Mute") }
-            Button(onClick = { vm.toggleTorch() }) { Text("Torch") }
-            if (ui.streamState is StreamState.Live || ui.streamState is StreamState.Connecting) {
-                Button(onClick = { vm.stop() }) { Text("Stop") }
-            } else {
-                Button(onClick = { vm.goLive() }) { Text("Go Live") }
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                TextButton(onClick = onConnections) { Text("Targets") }
+                TextButton(onClick = { vm.switchCamera() }) { Text("Flip") }
+                TextButton(onClick = { vm.toggleMute() }) { Text(if (ui.muted) "Unmute" else "Mute") }
+                TextButton(onClick = { vm.toggleTorch() }) { Text("Torch") }
             }
+            Button(
+                onClick = { if (streaming) vm.stop() else vm.goLive() },
+                modifier = Modifier.fillMaxWidth()
+            ) { Text(if (streaming) "Stop" else "Go Live") }
         }
     }
 }
