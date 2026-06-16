@@ -1,7 +1,7 @@
 # Opticast
 
 <p align="center">
-  <img src="brand/logo.png" width="128" alt="Opticast" />
+  <img src="brand/social_preview.png" width="640" alt="Opticast" />
 </p>
 
 Opticast is an Android application that captures the device camera and microphone and encodes them to a live video stream over **RTMP** or **SRT**. You point it at a server you control and it publishes there; the destination URL is the only thing that leaves the device.
