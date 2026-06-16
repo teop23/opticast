@@ -71,10 +71,9 @@ def main():
         save(render(mask, WHITE, notif_px, 0.88), f"drawable-{dpi}", "ic_stat_opticast.png")
         save(with_bg(mask, LIME, BLACK, ic_px, 0.62), f"mipmap-{dpi}", "ic_launcher.png")
         save(with_bg(mask, LIME, BLACK, ic_px, 0.58, circle=True), f"mipmap-{dpi}", "ic_launcher_round.png")
-    # splash icon: lime mark, transparent, 432px (Android 12 masks it to a circle window)
-    save(render(mask, LIME, 432, 0.62), "drawable-xxxhdpi", "ic_splash.png")
-    save(render(mask, LIME, 108, 0.62), "drawable-mdpi", "ic_splash.png")
-    save(render(mask, LIME, 216, 0.62), "drawable-xhdpi", "ic_splash.png")
+    # splash icon: ONE high-res nodpi asset (Android 12 scales it to the splash window).
+    # 1152px = xxxhdpi 288dp; nodpi avoids density up-scaling so it's crisp on any phone.
+    save(render(mask, LIME, 1152, 0.60), "drawable-nodpi", "ic_splash.png")
     print("icons generated under", os.path.normpath(RES))
 
 
