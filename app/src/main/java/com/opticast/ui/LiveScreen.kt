@@ -25,6 +25,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -119,7 +121,10 @@ fun LiveScreen(vm: StreamViewModel, onConnections: () -> Unit) {
                     "Mic", active = ui.muted) { vm.toggleMute() }
                 ControlButton(if (ui.torch) Icons.Filled.FlashlightOn else Icons.Filled.FlashlightOff,
                     "Torch", active = ui.torch) { vm.toggleTorch() }
-                ControlButton(Icons.Filled.Dns, "Targets") { onConnections() }
+                ControlButton(
+                    Icons.Filled.Dns,
+                    ui.selected?.name?.takeIf { it.isNotBlank() } ?: "Targets"
+                ) { onConnections() }
             }
 
             Button(
@@ -189,7 +194,15 @@ private fun ControlButton(icon: ImageVector, label: String, active: Boolean = fa
             modifier = Modifier.size(52.dp)
         ) { Icon(icon, label, modifier = Modifier.size(22.dp)) }
         Spacer(Modifier.height(4.dp))
-        Text(label, style = MaterialTheme.typography.labelSmall, color = TextFaint)
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            color = TextFaint,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.widthIn(max = 64.dp)
+        )
     }
 }
 

@@ -61,6 +61,7 @@ class StreamCoordinator(
         wantLive = false
         reconnectJob?.cancel(); reconnectJob = null
         inner.stop()
+        _state.value = StreamState.Idle
     }
 
     override fun switchCamera() = inner.switchCamera()

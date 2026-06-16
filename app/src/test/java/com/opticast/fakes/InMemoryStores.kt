@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.asStateFlow
 
 class InMemoryProfileStore : ProfileStore {
     private val state = MutableStateFlow<List<Connection>>(emptyList())
+    private val selected = MutableStateFlow<String?>(null)
     override fun profiles() = state.asStateFlow()
     override suspend fun upsert(connection: Connection) {
         val stripped = connection.copy(secret = null)
@@ -16,6 +17,8 @@ class InMemoryProfileStore : ProfileStore {
     override suspend fun delete(id: String) {
         state.value = state.value.filter { it.id != id }
     }
+    override fun selectedId() = selected.asStateFlow()
+    override suspend fun setSelectedId(id: String?) { selected.value = id }
 }
 
 class InMemorySecretStore : SecretStore {

@@ -23,4 +23,7 @@ class ConnectionRepository(
         profileStore.delete(id)
         secretStore.remove(id)
     }
+
+    fun selectedId(): Flow<String?> = profileStore.selectedId()
+    suspend fun setSelected(id: String?) = profileStore.setSelectedId(id)
 }

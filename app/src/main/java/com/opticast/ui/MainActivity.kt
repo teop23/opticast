@@ -1,8 +1,12 @@
 package com.opticast.ui
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.os.PowerManager
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -59,6 +63,27 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        maybeAskBatteryExemption()
         setContent { OpticastTheme { OpticastNavHost(vm) } }
+    }
+
+    /**
+     * One-time prompt to exempt the app from battery optimization, so aggressive OEMs
+     * (HyperOS/MIUI) don't kill the foreground service mid-stream. Asked once; user can decline.
+     */
+    private fun maybeAskBatteryExemption() {
+        val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+        val prefs = getSharedPreferences("opticast_prefs", Context.MODE_PRIVATE)
+        if (!pm.isIgnoringBatteryOptimizations(packageName) && !prefs.getBoolean("asked_batt", false)) {
+            prefs.edit().putBoolean("asked_batt", true).apply()
+            runCatching {
+                startActivity(
+                    Intent(
+                        Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                        Uri.parse("package:$packageName")
+                    )
+                )
+            }
+        }
     }
 }

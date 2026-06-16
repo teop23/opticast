@@ -30,7 +30,11 @@ class RootEncoderBroadcaster(context: Context) : Broadcaster, ConnectChecker {
 
     /** prepareVideo/prepareAudio require stream + preview stopped; sets [prepared]. */
     private fun prepare(width: Int, height: Int, videoBitrate: Int, fps: Int, audioBitrate: Int): Boolean {
-        val video = stream.prepareVideo(width, height, videoBitrate, fps, 0)
+        // StreamBase.prepareVideo(width, height, bitrate, fps, iFrameInterval, ...) — named to be
+        // unambiguous. iFrameInterval = 1s keyframe interval (default is 2s) for faster join/recovery.
+        val video = stream.prepareVideo(
+            width = width, height = height, bitrate = videoBitrate, fps = fps, iFrameInterval = 1
+        )
         val audio = stream.prepareAudio(44100, true, audioBitrate)
         prepared = video && audio
         return prepared

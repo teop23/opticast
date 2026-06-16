@@ -8,6 +8,7 @@ import com.opticast.model.StreamState
 import com.opticast.model.StreamStats
 import com.opticast.stream.Broadcaster
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 data class UiState(
@@ -32,7 +33,14 @@ class StreamViewModel(
         viewModelScope.launch { broadcaster.state.collect { s -> _ui.update { it.copy(streamState = s) } } }
         viewModelScope.launch { broadcaster.stats.collect { s -> _ui.update { it.copy(stats = s) } } }
         viewModelScope.launch {
-            repository.connections().collect { list -> _ui.update { it.copy(connections = list) } }
+            val savedId = repository.selectedId().first()
+            repository.connections().collect { list ->
+                _ui.update { st ->
+                    // restore persisted selection on first load; keep the user's live choice after
+                    val sel = st.selected ?: list.firstOrNull { it.id == savedId }
+                    st.copy(connections = list, selected = sel)
+                }
+            }
         }
     }
 
@@ -40,7 +48,10 @@ class StreamViewModel(
     fun broadcasterForPreview(): Broadcaster =
         (broadcaster as? com.opticast.stream.StreamCoordinator)?.engine() ?: broadcaster
 
-    fun selectConnection(c: Connection) { _ui.update { it.copy(selected = c) } }
+    fun selectConnection(c: Connection) {
+        _ui.update { it.copy(selected = c) }
+        viewModelScope.launch { repository.setSelected(c.id) }
+    }
 
     fun goLive() {
         val c = _ui.value.selected
