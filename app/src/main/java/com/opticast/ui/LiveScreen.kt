@@ -1,6 +1,7 @@
 package com.opticast.ui
 
 import android.graphics.SurfaceTexture
+import android.view.MotionEvent
 import android.view.TextureView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -61,6 +62,13 @@ fun LiveScreen(vm: StreamViewModel, onConnections: () -> Unit) {
                             }
                             override fun onSurfaceTextureUpdated(s: SurfaceTexture) {}
                         }
+                        // Pinch to zoom, tap to focus (only meaningful while the preview is visible).
+                        setOnTouchListener { v, event ->
+                            val b = vm.broadcasterForPreview() as? RootEncoderBroadcaster
+                            if (event.pointerCount >= 2) b?.setZoom(event)
+                            else if (event.actionMasked == MotionEvent.ACTION_UP) b?.tapToFocus(v, event)
+                            true
+                        }
                     }
                 },
                 modifier = Modifier.fillMaxSize()
@@ -79,7 +87,7 @@ fun LiveScreen(vm: StreamViewModel, onConnections: () -> Unit) {
 
         // Top status row
         Row(
-            Modifier.align(Alignment.TopStart).fillMaxWidth().padding(16.dp),
+            Modifier.align(Alignment.TopStart).fillMaxWidth().statusBarsPadding().padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             StatusPill(ui.streamState, ui.stats.uptimeSeconds)
@@ -99,6 +107,7 @@ fun LiveScreen(vm: StreamViewModel, onConnections: () -> Unit) {
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .background(Brush.verticalGradient(listOf(Color.Transparent, MaterialTheme.colorScheme.background)))
+                .navigationBarsPadding()
                 .padding(start = 16.dp, end = 16.dp, top = 40.dp, bottom = 20.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {

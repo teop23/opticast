@@ -3,7 +3,7 @@ package com.opticast.stream
 class ReconnectController(
     private val baseMs: Long,
     private val capMs: Long,
-    private val maxAttempts: Int
+    val maxAttempts: Int
 ) {
     /** Exponential backoff: base * 2^(attempt-1), capped at capMs. Attempt is 1-based. */
     fun delayForAttempt(attempt: Int): Long {

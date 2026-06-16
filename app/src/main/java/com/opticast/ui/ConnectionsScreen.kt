@@ -44,7 +44,7 @@ fun ConnectionsScreen(vm: StreamViewModel, onBack: () -> Unit) {
     var editing by remember { mutableStateOf<Connection?>(null) }
 
     Column(
-        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(16.dp)
+        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).systemBarsPadding().padding(16.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, "Back", tint = TextMuted) }
@@ -128,7 +128,7 @@ fun ConnectionEditorDialog(initial: Connection, onDismiss: () -> Unit, onSave: (
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(color = MaterialTheme.colorScheme.background, modifier = Modifier.fillMaxSize()) {
-            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
+            Column(Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)) {
 
                 Text(if (initial.name.isBlank()) "New target" else "Edit target",

@@ -1,7 +1,9 @@
 package com.opticast.stream
 
 import android.content.Context
+import android.view.MotionEvent
 import android.view.TextureView
+import android.view.View
 import com.opticast.model.Connection
 import com.opticast.model.StreamCodec
 import com.opticast.model.StreamState
@@ -80,6 +82,9 @@ class RootEncoderBroadcaster(context: Context) : Broadcaster, ConnectChecker {
     // In RootEncoder 2.7.4 camera/audio control lives on the sources, not StreamBase.
     private val camera get() = stream.videoSource as? Camera2Source
     private val mic get() = stream.audioSource as? MicrophoneSource
+
+    fun tapToFocus(view: View, event: MotionEvent) { camera?.tapToFocus(view, event) }
+    fun setZoom(event: MotionEvent) { camera?.setZoom(event) }
 
     override fun switchCamera() { camera?.switchCamera() }
     override fun setVideoBitrate(bps: Int) { stream.setVideoBitrateOnFly(bps) }

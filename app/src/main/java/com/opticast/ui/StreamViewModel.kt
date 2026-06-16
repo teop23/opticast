@@ -36,8 +36,9 @@ class StreamViewModel(
         }
     }
 
-    /** Exposes the broadcaster instance so the Live screen can attach a preview surface. */
-    fun broadcasterForPreview(): Broadcaster = broadcaster
+    /** The underlying engine (unwrapped from any coordinator) so the Live screen can attach preview. */
+    fun broadcasterForPreview(): Broadcaster =
+        (broadcaster as? com.opticast.stream.StreamCoordinator)?.engine() ?: broadcaster
 
     fun selectConnection(c: Connection) { _ui.update { it.copy(selected = c) } }
 
