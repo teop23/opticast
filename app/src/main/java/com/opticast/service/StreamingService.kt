@@ -77,6 +77,7 @@ class StreamingService : Service() {
             .setContentTitle("Opticast")
             .setContentText("Streaming — tap to open")
             .setSmallIcon(com.opticast.R.drawable.ic_stat_opticast)
+            .setColor(0xFFC6F000.toInt())          // lime accent tints the small-icon badge
             .setOngoing(true)
             .setContentIntent(contentPi)
             .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Stop streaming", stopPi)
