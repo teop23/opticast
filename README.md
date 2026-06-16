@@ -1,42 +1,62 @@
 # Opticast
 
-> **License: GPLv3.** Distribution: GitHub Releases (signed APK) + Obtainium/IzzyOnDroid; F-Droid later.
+> **GPL-3.0** · Android 8.0+ (API 26) · built on [RootEncoder](https://github.com/pedroSG94/RootEncoder)
 
-*optic + cast* — an open-source, activity-agnostic **Android camera broadcaster**: capture this phone's camera + mic and stream to **any server you control** over RTMP or SRT. No watermark, no time limit, no account, no telemetry, no third-party servers in the path.
+*optic + cast* — an open-source, activity-agnostic **Android camera broadcaster**: capture your phone's camera + mic and stream to **any server you control** over RTMP or SRT. No watermark, no time limit, no account, **no telemetry**, no third-party servers in the path.
 
 A libre alternative to apps like Larix Broadcaster — whose watermark/time-limit are pure client-side monetization, not a technical necessity (the stream goes straight to your server either way).
 
-This started as the streaming component for [MotoLive](../README.md) (motorcycle helmet-POV streaming) but is intentionally general-purpose. MotoLive is just one consumer.
+<p>
+  <img src="docs/screenshots/live.png" width="260" alt="Live screen" />
+  <img src="docs/screenshots/editor.png" width="260" alt="Quality editor" />
+</p>
 
-## Status
+## Features
 
-**MVP implemented — builds green, 27 unit tests passing, debug APK assembles.** Not yet verified on a physical device (camera/streaming on-device test pending). See [design spec](docs/superpowers/specs/2026-06-15-camera-broadcaster-design.md) and [implementation plan](docs/superpowers/plans/2026-06-15-opticast-mvp.md).
+- Stream the phone camera + mic to any server over **RTMP or SRT**
+- **H.264 or H.265** encoding
+- **Connection profiles** — saved targets with **quality presets** (480p30 → 1080p60) and an **Advanced** editor (resolution / fps / bitrate / codec) with soft validation that warns but lets you proceed
+- **Adaptive bitrate** + **auto-reconnect** with capped backoff — built for unreliable cellular
+- **Background / screen-off streaming** (foreground service + wake lock) — preview is **off by default to save battery**, toggle it on when you need it
+- Tap-to-focus, pinch-zoom, camera flip, torch, mute
+- Encrypted credential storage, ongoing notification with a stop action
+- OLED-dark Material 3 UI
 
-**Build:** `./gradlew testDebugUnitTest` (unit tests) · `./gradlew assembleDebug` (APK) · `./gradlew installDebug` (to a connected device).
-**Toolchain:** AGP 8.11.1, Gradle 8.13, Kotlin 2.3.21, compileSdk 36, JDK 17+ (RootEncoder 2.7.4 requires these).
+**Non-goals (by design):** cloud accounts, analytics/telemetry, a hosted relay, ad/tracking SDKs. Bring-your-own-server, fully local, fully private — see [PRIVACY.md](PRIVACY.md).
 
-## Features (v1 MVP)
+## Install
 
-- Stream the phone camera + mic to a server via **RTMP or SRT**
-- **Connection profiles** — saved named destinations (URL, protocol, secret, video/audio params)
-- **Adaptive bitrate** — adjusts to the link; built for unreliable cellular
-- **Auto-reconnect** with backoff
-- **Background / screen-off streaming** — keeps running when the screen is off or you switch apps (foreground service + wake lock)
-- Front/back camera switch, tap-to-focus, pinch-zoom, torch, audio mute
-- Clear connection state + live stats (bitrate, fps, dropped frames, uptime)
+- **GitHub Releases** — grab the signed APK from the [latest release](https://github.com/teop23/opticast/releases) and sideload it.
+- **[Obtainium](https://github.com/ImranR98/Obtainium)** — add `https://github.com/teop23/opticast` for auto-updates.
 
-**Deferred:** simultaneous multi-destination, local MP4 recording, HEVC/AV1, RTSP output, on-screen overlays, network bonding.
+You'll also need a server to stream to (e.g. [MediaMTX](https://github.com/bluenviron/mediamtx)) and a player/OBS to view it.
 
-**Non-goals (by design):** cloud accounts, analytics/telemetry, a hosted relay, ad/tracking SDKs — anything that routes your stream through someone else's server.
+## Build
 
-## Permissions
+```bash
+./gradlew testDebugUnitTest      # unit tests
+./gradlew assembleDebug          # debug APK
+./gradlew installDebug           # install to a connected device
+./gradlew assembleRelease        # signed release (needs keystore.properties, see below)
+```
 
-Asks for **camera, microphone, and network — nothing else.** No location, no storage, no contacts. (Plus the normal install-time foreground-service/wake-lock declarations needed to stream with the screen off, and an optional battery-optimization exemption to survive aggressive OEM task-killers.) See the spec for the full list and rationale.
+**Toolchain:** AGP 8.11.1, Gradle 8.13, Kotlin 2.3.21, compileSdk 36, JDK 17+.
 
-## Built on
+Release signing is read from a `keystore.properties` at the repo root (git-ignored):
 
-[RootEncoder](https://github.com/pedroSG94/RootEncoder) (Apache-2.0) — the camera→RTMP/RTSP/SRT encoder library. Kotlin + Jetpack Compose.
+```properties
+storeFile=opticast-release.jks
+storePassword=…
+keyAlias=…
+keyPassword=…
+```
 
-## Security posture
+Without it, `assembleRelease` still builds (unsigned).
 
-Stream keys/passphrases stored in Android Keystore-backed encrypted storage; visible warning on unencrypted transports; locked-down (non-exported) components; minimal dependency tree aiming for F-Droid reproducible builds. Full threat model in the spec.
+## Security
+
+Stream keys/passphrases are stored in **Android Keystore-backed encrypted storage**; the editor warns when a target would send credentials/video unencrypted to a remote host; service/receiver components are non-exported; `allowBackup=false`. Asks for **camera, mic, and network only**.
+
+## License
+
+GPL-3.0 — see [LICENSE](LICENSE). Built on RootEncoder (Apache-2.0).

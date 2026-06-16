@@ -8,3 +8,7 @@
 .externalNativeBuild
 .cxx
 /.kotlin
+
+# release signing (keep private)
+/keystore.properties
+/*.jks

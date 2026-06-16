@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -42,6 +43,8 @@ fun ConnectionsScreen(vm: StreamViewModel, onBack: () -> Unit) {
     val ui by vm.uiState.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     var editing by remember { mutableStateOf<Connection?>(null) }
+    var about by remember { mutableStateOf(false) }
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     Column(
         Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).systemBarsPadding().padding(16.dp)
@@ -50,6 +53,7 @@ fun ConnectionsScreen(vm: StreamViewModel, onBack: () -> Unit) {
             IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, "Back", tint = TextMuted) }
             Text("Targets", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onBackground)
             Spacer(Modifier.weight(1f))
+            IconButton(onClick = { about = true }) { Icon(Icons.Filled.Info, "About", tint = TextMuted) }
             FilledTonalButton(onClick = { editing = blankConnection() }) {
                 Icon(Icons.Filled.Add, null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp)); Text("New")
@@ -81,6 +85,24 @@ fun ConnectionsScreen(vm: StreamViewModel, onBack: () -> Unit) {
             initial = conn,
             onDismiss = { editing = null },
             onSave = { scope.launch { vm.save(it); editing = null } }
+        )
+    }
+
+    if (about) {
+        val url = "https://github.com/teop23/opticast"
+        AlertDialog(
+            onDismissRequest = { about = false },
+            confirmButton = { TextButton(onClick = { about = false }) { Text("Close") } },
+            title = { Text("Opticast ${com.opticast.BuildConfig.VERSION_NAME}") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("Open-source camera broadcaster — streams your phone camera to any RTMP/SRT server. No accounts, no telemetry.")
+                    Text("License: GPL-3.0", color = TextMuted)
+                    TextButton(contentPadding = PaddingValues(0.dp), onClick = {
+                        context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)))
+                    }) { Text(url) }
+                }
+            }
         )
     }
 }
