@@ -1,5 +1,6 @@
 package com.opticast.ui
 
+import android.view.SurfaceHolder
 import android.view.SurfaceView
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -17,11 +18,21 @@ fun LiveScreen(vm: StreamViewModel, onConnections: () -> Unit) {
     val ui by vm.uiState.collectAsStateWithLifecycle()
 
     Box(Modifier.fillMaxSize()) {
-        // Preview surface (only the RootEncoder impl can render; safe no-op for fakes)
+        // Preview surface. attachPreview must wait until the Surface is actually valid
+        // (surfaceCreated) — calling it in the factory crashes RootEncoder with
+        // "Make sure the Surface is valid".
         AndroidView(
             factory = { ctx ->
-                SurfaceView(ctx).also { sv ->
-                    (vm.broadcasterForPreview() as? RootEncoderBroadcaster)?.attachPreview(sv)
+                SurfaceView(ctx).apply {
+                    holder.addCallback(object : SurfaceHolder.Callback {
+                        override fun surfaceCreated(holder: SurfaceHolder) {
+                            (vm.broadcasterForPreview() as? RootEncoderBroadcaster)?.attachPreview(this@apply)
+                        }
+                        override fun surfaceChanged(h: SurfaceHolder, f: Int, w: Int, hh: Int) {}
+                        override fun surfaceDestroyed(holder: SurfaceHolder) {
+                            (vm.broadcasterForPreview() as? RootEncoderBroadcaster)?.detachPreview()
+                        }
+                    })
                 }
             },
             modifier = Modifier.fillMaxSize()
