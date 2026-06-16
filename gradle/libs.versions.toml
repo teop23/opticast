@@ -4,6 +4,7 @@ kotlin = "2.3.21"
 coreKtx = "1.13.1"
 lifecycle = "2.8.4"
 activityCompose = "1.9.1"
+splashscreen = "1.0.1"
 composeBom = "2024.08.00"
 navigationCompose = "2.8.0"
 datastore = "1.1.1"
@@ -20,6 +21,7 @@ lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtime-ktx", v
 lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle" }
 lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
 activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
+core-splashscreen = { module = "androidx.core:core-splashscreen", version.ref = "splashscreen" }
 compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
 compose-ui = { module = "androidx.compose.ui:ui" }
 compose-material3 = { module = "androidx.compose.material3:material3" }

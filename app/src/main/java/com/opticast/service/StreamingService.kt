@@ -76,7 +76,7 @@ class StreamingService : Service() {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Opticast")
             .setContentText("Streaming — tap to open")
-            .setSmallIcon(android.R.drawable.presence_video_online)
+            .setSmallIcon(com.opticast.R.drawable.ic_stat_opticast)
             .setOngoing(true)
             .setContentIntent(contentPi)
             .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Stop streaming", stopPi)
