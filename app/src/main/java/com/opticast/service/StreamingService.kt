@@ -3,6 +3,7 @@ package com.opticast.service
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -18,6 +19,7 @@ class StreamingService : Service() {
     companion object {
         const val CHANNEL_ID = "opticast_stream"
         const val NOTIF_ID = 1
+        const val ACTION_STOP = "com.opticast.action.STOP"
         // Set by the app graph before binding/starting (see OpticastApp / MainActivity).
         @Volatile var broadcaster: Broadcaster? = null
     }
@@ -32,6 +34,15 @@ class StreamingService : Service() {
     override fun onBind(intent: Intent?): IBinder = binder
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_STOP) {
+            // Notification "Stop" button: stop the stream and tear the service down.
+            // Works regardless of whether the Activity is in the foreground.
+            broadcaster?.stop()
+            releaseWakeLock()
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+            return START_NOT_STICKY
+        }
         startForegroundCompat()
         acquireWakeLock()
         return START_STICKY
@@ -39,12 +50,7 @@ class StreamingService : Service() {
 
     private fun startForegroundCompat() {
         createChannel()
-        val notification: Notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Opticast")
-            .setContentText("Streaming")
-            .setSmallIcon(android.R.drawable.presence_video_online)
-            .setOngoing(true)
-            .build()
+        val notification = buildNotification()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) { // 34
             startForeground(
                 NOTIF_ID, notification,
@@ -54,6 +60,27 @@ class StreamingService : Service() {
         } else {
             startForeground(NOTIF_ID, notification)
         }
+    }
+
+    private fun buildNotification(): Notification {
+        val flags = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+
+        // Tapping the notification body opens the app (existing task brought to front).
+        val openIntent = packageManager.getLaunchIntentForPackage(packageName)
+        val contentPi = PendingIntent.getActivity(this, 0, openIntent, flags)
+
+        // The "Stop streaming" action routes back to this service with ACTION_STOP.
+        val stopIntent = Intent(this, StreamingService::class.java).setAction(ACTION_STOP)
+        val stopPi = PendingIntent.getService(this, 1, stopIntent, flags)
+
+        return NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("Opticast")
+            .setContentText("Streaming — tap to open")
+            .setSmallIcon(android.R.drawable.presence_video_online)
+            .setOngoing(true)
+            .setContentIntent(contentPi)
+            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Stop streaming", stopPi)
+            .build()
     }
 
     private fun createChannel() {
@@ -72,8 +99,13 @@ class StreamingService : Service() {
         }
     }
 
-    override fun onDestroy() {
+    private fun releaseWakeLock() {
         wakeLock?.let { if (it.isHeld) it.release() }
+        wakeLock = null
+    }
+
+    override fun onDestroy() {
+        releaseWakeLock()
         super.onDestroy()
     }
 }
