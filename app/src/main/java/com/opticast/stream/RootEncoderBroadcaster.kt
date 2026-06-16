@@ -87,7 +87,12 @@ class RootEncoderBroadcaster(context: Context) : Broadcaster, ConnectChecker {
     // ConnectChecker
     override fun onConnectionStarted(url: String) { state.value = StreamState.Connecting }
     override fun onConnectionSuccess() { state.value = StreamState.Live }
-    override fun onConnectionFailed(reason: String) { state.value = StreamState.Error(reason) }
+    override fun onConnectionFailed(reason: String) {
+        // Must stop the stream on failure or RootEncoder stays "streaming" and every retry
+        // hits the isStreaming guard and no-ops.
+        if (stream.isStreaming) stream.stopStream()
+        state.value = StreamState.Error(reason)
+    }
     override fun onNewBitrate(bitrate: Long) {
         reportedBitrate.value = bitrate
         val uptime = (System.currentTimeMillis() - startedAtMs) / 1000
