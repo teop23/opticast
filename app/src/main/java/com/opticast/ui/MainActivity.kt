@@ -14,6 +14,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.opticast.OpticastApp
 import com.opticast.model.StreamState
 import com.opticast.service.StreamingService
+import com.opticast.ui.theme.OpticastTheme
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -56,6 +57,6 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        setContent { OpticastNavHost(vm) }
+        setContent { OpticastTheme { OpticastNavHost(vm) } }
     }
 }

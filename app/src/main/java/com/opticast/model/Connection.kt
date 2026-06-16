@@ -2,6 +2,8 @@ package com.opticast.model
 
 enum class StreamProtocol { RTMP, SRT }
 
+enum class StreamCodec { H264, H265 }
+
 data class Connection(
     val id: String,
     val name: String,
@@ -14,7 +16,8 @@ data class Connection(
     val height: Int,
     val fps: Int,
     val videoBitrate: Int,        // bps
-    val audioBitrate: Int         // bps
+    val audioBitrate: Int,        // bps
+    val codec: StreamCodec = StreamCodec.H264
 ) {
     fun toEndpoint(): String = when (protocol) {
         StreamProtocol.RTMP -> {

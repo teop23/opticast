@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.opticast.model.Connection
+import com.opticast.model.StreamCodec
 import com.opticast.model.StreamProtocol
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -43,6 +44,7 @@ class DataStoreProfileStore(private val context: Context) : ProfileStore {
                 put("host", c.host); put("port", c.port); put("path", c.path)
                 put("width", c.width); put("height", c.height); put("fps", c.fps)
                 put("videoBitrate", c.videoBitrate); put("audioBitrate", c.audioBitrate)
+                put("codec", c.codec.name)
             })
         }
         return arr.toString()
@@ -58,7 +60,8 @@ class DataStoreProfileStore(private val context: Context) : ProfileStore {
                 host = o.getString("host"), port = o.getInt("port"), path = o.getString("path"),
                 secret = null,
                 width = o.getInt("width"), height = o.getInt("height"), fps = o.getInt("fps"),
-                videoBitrate = o.getInt("videoBitrate"), audioBitrate = o.getInt("audioBitrate")
+                videoBitrate = o.getInt("videoBitrate"), audioBitrate = o.getInt("audioBitrate"),
+                codec = StreamCodec.valueOf(o.optString("codec", "H264"))
             )
         }
     }

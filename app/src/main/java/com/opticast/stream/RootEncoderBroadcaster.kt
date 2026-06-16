@@ -3,9 +3,11 @@ package com.opticast.stream
 import android.content.Context
 import android.view.TextureView
 import com.opticast.model.Connection
+import com.opticast.model.StreamCodec
 import com.opticast.model.StreamState
 import com.opticast.model.StreamStats
 import com.pedro.common.ConnectChecker
+import com.pedro.common.VideoCodec
 import com.pedro.encoder.input.sources.audio.MicrophoneSource
 import com.pedro.encoder.input.sources.video.Camera2Source
 import com.pedro.library.generic.GenericStream
@@ -38,6 +40,7 @@ class RootEncoderBroadcaster(context: Context) : Broadcaster, ConnectChecker {
         // so stop it, prepare, then restore the preview before streaming.
         val view = previewView
         if (stream.isOnPreview) stream.stopPreview()
+        stream.setVideoCodec(if (connection.codec == StreamCodec.H265) VideoCodec.H265 else VideoCodec.H264)
         val ok = prepare(
             connection.width, connection.height,
             connection.videoBitrate, connection.fps, connection.audioBitrate

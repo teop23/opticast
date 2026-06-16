@@ -1,16 +1,38 @@
 package com.opticast.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.opticast.model.Connection
+import com.opticast.model.QualityPresets
+import com.opticast.model.StreamCodec
 import com.opticast.model.StreamProtocol
+import com.opticast.ui.theme.Amber
+import com.opticast.ui.theme.MonoStat
+import com.opticast.ui.theme.SurfaceElevated
+import com.opticast.ui.theme.TextFaint
+import com.opticast.ui.theme.TextMuted
 import com.opticast.util.ConnectionValidator
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -21,22 +43,34 @@ fun ConnectionsScreen(vm: StreamViewModel, onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
     var editing by remember { mutableStateOf<Connection?>(null) }
 
-    Column(Modifier.fillMaxSize().padding(12.dp)) {
-        Row {
-            Button(onClick = onBack) { Text("Back") }
-            Spacer(Modifier.width(8.dp))
-            Button(onClick = { editing = blankConnection() }) { Text("New") }
+    Column(
+        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(16.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, "Back", tint = TextMuted) }
+            Text("Targets", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onBackground)
+            Spacer(Modifier.weight(1f))
+            FilledTonalButton(onClick = { editing = blankConnection() }) {
+                Icon(Icons.Filled.Add, null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp)); Text("New")
+            }
         }
-        LazyColumn(Modifier.weight(1f)) {
-            items(ui.connections) { c ->
-                ListItem(
-                    headlineContent = { Text(c.name) },
-                    supportingContent = { Text("${c.protocol} ${c.host}:${c.port}/${c.path}") },
-                    modifier = Modifier.clickable { vm.selectConnection(c); onBack() }
-                )
-                Row {
-                    TextButton(onClick = { editing = c }) { Text("Edit") }
-                    TextButton(onClick = { scope.launch { vm.delete(c.id) } }) { Text("Delete") }
+        Spacer(Modifier.height(12.dp))
+
+        if (ui.connections.isEmpty()) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("No targets yet — tap New", color = TextFaint)
+            }
+        } else {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                items(ui.connections, key = { it.id }) { c ->
+                    ConnectionCard(
+                        c,
+                        selected = ui.selected?.id == c.id,
+                        onSelect = { vm.selectConnection(c); onBack() },
+                        onEdit = { editing = c },
+                        onDelete = { scope.launch { vm.delete(c.id) } }
+                    )
                 }
             }
         }
@@ -51,54 +85,154 @@ fun ConnectionsScreen(vm: StreamViewModel, onBack: () -> Unit) {
     }
 }
 
+@Composable
+private fun ConnectionCard(
+    c: Connection, selected: Boolean,
+    onSelect: () -> Unit, onEdit: () -> Unit, onDelete: () -> Unit
+) {
+    Surface(
+        color = SurfaceElevated,
+        shape = RoundedCornerShape(14.dp),
+        border = if (selected) androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null,
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onSelect)
+    ) {
+        Column(Modifier.padding(14.dp)) {
+            Text(c.name.ifBlank { "(unnamed)" }, style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface)
+            Spacer(Modifier.height(4.dp))
+            Text("${c.protocol} ${c.host}:${c.port}/${c.path}", style = MonoStat, color = TextMuted)
+            Text("${c.width}×${c.height} · ${c.fps}fps · ${c.videoBitrate / 1000}k · ${c.codec}",
+                style = MonoStat, color = TextFaint)
+            Row {
+                TextButton(onClick = onEdit) { Text("Edit") }
+                TextButton(onClick = onDelete) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+            }
+        }
+    }
+}
+
 private fun blankConnection() = Connection(
     id = UUID.randomUUID().toString(), name = "", protocol = StreamProtocol.SRT,
     host = "", port = 8890, path = "live/stream", secret = null,
-    width = 1280, height = 720, fps = 30, videoBitrate = 2_500_000, audioBitrate = 128_000
+    width = 1280, height = 720, fps = 30, videoBitrate = 2_500_000, audioBitrate = 128_000,
+    codec = StreamCodec.H264
 )
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ConnectionEditorDialog(initial: Connection, onDismiss: () -> Unit, onSave: (Connection) -> Unit) {
     var c by remember { mutableStateOf(initial) }
+    var advanced by remember { mutableStateOf(false) }
     val result = ConnectionValidator.validate(c)
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = {
-            TextButton(enabled = result.errors.isEmpty(), onClick = { onSave(c) }) { Text("Save") }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
-        title = { Text("Connection") },
-        text = {
-            Column {
-                OutlinedTextField(c.name, { c = c.copy(name = it) }, label = { Text("Name") })
-                Row {
-                    FilterChip(
-                        selected = c.protocol == StreamProtocol.RTMP,
-                        onClick = { c = c.copy(protocol = StreamProtocol.RTMP) },
-                        label = { Text("RTMP") }
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    FilterChip(
-                        selected = c.protocol == StreamProtocol.SRT,
-                        onClick = { c = c.copy(protocol = StreamProtocol.SRT) },
-                        label = { Text("SRT") }
-                    )
+    val activePreset = QualityPresets.match(c)
+
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(color = MaterialTheme.colorScheme.background, modifier = Modifier.fillMaxSize()) {
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)) {
+
+                Text(if (initial.name.isBlank()) "New target" else "Edit target",
+                    style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onBackground)
+
+                // Protocol
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(c.protocol == StreamProtocol.RTMP,
+                        { c = c.copy(protocol = StreamProtocol.RTMP) }, { Text("RTMP") })
+                    FilterChip(c.protocol == StreamProtocol.SRT,
+                        { c = c.copy(protocol = StreamProtocol.SRT) }, { Text("SRT") })
                 }
-                OutlinedTextField(c.host, { c = c.copy(host = it) }, label = { Text("Host") })
-                OutlinedTextField(
-                    c.port.toString(),
-                    { c = c.copy(port = it.toIntOrNull() ?: 0) },
-                    label = { Text("Port") }
-                )
-                OutlinedTextField(c.path, { c = c.copy(path = it) }, label = { Text("App/Path") })
-                OutlinedTextField(
-                    c.secret ?: "",
-                    { c = c.copy(secret = it.ifBlank { null }) },
-                    label = { Text(if (c.protocol == StreamProtocol.SRT) "Passphrase" else "user:pass") }
-                )
-                result.errors.forEach { Text("• $it", color = MaterialTheme.colorScheme.error) }
-                result.warnings.forEach { Text("⚠ $it", color = MaterialTheme.colorScheme.error) }
+
+                OutlinedTextField(c.name, { c = c.copy(name = it) },
+                    label = { Text("Name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(c.host, { c = c.copy(host = it) },
+                    label = { Text("Host") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedTextField(c.port.toString(), { c = c.copy(port = it.toIntOrNull() ?: 0) },
+                        label = { Text("Port") }, singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.weight(1f))
+                    OutlinedTextField(c.path, { c = c.copy(path = it) },
+                        label = { Text("App / path") }, singleLine = true, modifier = Modifier.weight(2f))
+                }
+                OutlinedTextField(c.secret ?: "", { c = c.copy(secret = it.ifBlank { null }) },
+                    label = { Text(if (c.protocol == StreamProtocol.SRT) "Passphrase" else "user:pass") },
+                    singleLine = true, modifier = Modifier.fillMaxWidth())
+
+                // Quality presets
+                Text("QUALITY", style = MaterialTheme.typography.labelMedium, color = TextMuted)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    QualityPresets.ALL.forEach { p ->
+                        FilterChip(
+                            selected = activePreset == p,
+                            onClick = { c = QualityPresets.apply(c, p) },
+                            label = { Text(p.label) }
+                        )
+                    }
+                }
+
+                // Advanced expander
+                Row(Modifier.fillMaxWidth().clickable { advanced = !advanced }.padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Text("Advanced", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onBackground)
+                    Spacer(Modifier.weight(1f))
+                    Icon(if (advanced) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, null, tint = TextMuted)
+                }
+                AnimatedVisibility(advanced) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            NumberField("Width", c.width, Modifier.weight(1f)) { c = c.copy(width = it) }
+                            NumberField("Height", c.height, Modifier.weight(1f)) { c = c.copy(height = it) }
+                            NumberField("FPS", c.fps, Modifier.weight(1f)) { c = c.copy(fps = it) }
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            NumberField("Video kbps", c.videoBitrate / 1000, Modifier.weight(1f)) {
+                                c = c.copy(videoBitrate = it * 1000)
+                            }
+                            NumberField("Audio kbps", c.audioBitrate / 1000, Modifier.weight(1f)) {
+                                c = c.copy(audioBitrate = it * 1000)
+                            }
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("Codec", color = TextMuted, style = MaterialTheme.typography.bodyMedium)
+                            FilterChip(c.codec == StreamCodec.H264, { c = c.copy(codec = StreamCodec.H264) }, { Text("H.264") })
+                            FilterChip(c.codec == StreamCodec.H265, { c = c.copy(codec = StreamCodec.H265) }, { Text("H.265") })
+                        }
+                    }
+                }
+
+                // Validation messages
+                result.errors.forEach {
+                    Text("• $it", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
+                result.warnings.forEach {
+                    Text("⚠  $it", color = Amber, style = MaterialTheme.typography.bodySmall)
+                }
+
+                Spacer(Modifier.height(4.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f)) { Text("Cancel") }
+                    Button(
+                        onClick = { onSave(c) },
+                        enabled = result.canSave,
+                        modifier = Modifier.weight(1f),
+                        colors = if (result.needsConfirm)
+                            ButtonDefaults.buttonColors(containerColor = Amber, contentColor = androidx.compose.ui.graphics.Color(0xFF231A00))
+                        else ButtonDefaults.buttonColors()
+                    ) { Text(if (result.needsConfirm) "Save anyway" else "Save") }
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun NumberField(label: String, value: Int, modifier: Modifier = Modifier, onChange: (Int) -> Unit) {
+    OutlinedTextField(
+        value = value.toString(),
+        onValueChange = { onChange(it.toIntOrNull() ?: 0) },
+        label = { Text(label) },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        modifier = modifier
     )
 }
