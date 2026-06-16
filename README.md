@@ -1,62 +1,61 @@
 # Opticast
 
-> **GPL-3.0** · Android 8.0+ (API 26) · built on [RootEncoder](https://github.com/pedroSG94/RootEncoder)
+**Turn your Android phone into a live camera.** Point it at any server you control and Opticast streams your camera and mic straight there — over RTMP or SRT. No account, no watermark, no time limit, nothing phoning home.
 
-*optic + cast* — an open-source, activity-agnostic **Android camera broadcaster**: capture your phone's camera + mic and stream to **any server you control** over RTMP or SRT. No watermark, no time limit, no account, **no telemetry**, no third-party servers in the path.
-
-A libre alternative to apps like Larix Broadcaster — whose watermark/time-limit are pure client-side monetization, not a technical necessity (the stream goes straight to your server either way).
+It's the broadcaster app behind a motorcycle helmet-cam project, but it works for anything: a webcam for your PC, a second angle for a stream, a security cam, a baby monitor, a field camera for an event.
 
 <p>
-  <img src="docs/screenshots/live.png" width="260" alt="Live screen" />
-  <img src="docs/screenshots/editor.png" width="260" alt="Quality editor" />
+  <img src="docs/screenshots/live.png" width="250" alt="Opticast — live screen" />
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/editor.png" width="250" alt="Opticast — add a target" />
 </p>
+
+## How to use it
+
+**1. Have somewhere to send the stream.** Opticast doesn't host anything — it pushes to a server *you* pick. The easiest is your own [MediaMTX](https://github.com/bluenviron/mediamtx) (one small binary on your PC), but any RTMP/SRT endpoint works (YouTube Live, Twitch, a streaming box, etc.).
+
+**2. Add a target.** Tap **Targets → New**, then:
+- choose **RTMP** or **SRT**,
+- enter the **host**, **port**, and **path** of your server (e.g. for MediaMTX on your PC: RTMP, host = your PC's IP, port `1935`, path `live/stream`),
+- add a password/passphrase if your server needs one,
+- pick a **quality preset** (or open **Advanced** for custom resolution / fps / bitrate / codec).
+
+Tap the target to select it.
+
+**3. Go live.** Hit **GO LIVE**. The chip up top shows `LIVE` with your bitrate and uptime. Open the same path in OBS, VLC, or any player and you'll see your phone's camera.
+
+**4. While streaming.** Toggle the **preview** (it's off by default to save battery and stay cool), **flip** the camera, **mute**, or turn on the **torch**. Tap-to-focus and pinch-to-zoom work on the preview. Lock the screen and it keeps streaming. Stop from the big button or straight from the notification.
 
 ## Features
 
-- Stream the phone camera + mic to any server over **RTMP or SRT**
-- **H.264 or H.265** encoding
-- **Connection profiles** — saved targets with **quality presets** (480p30 → 1080p60) and an **Advanced** editor (resolution / fps / bitrate / codec) with soft validation that warns but lets you proceed
-- **Adaptive bitrate** + **auto-reconnect** with capped backoff — built for unreliable cellular
-- **Background / screen-off streaming** (foreground service + wake lock) — preview is **off by default to save battery**, toggle it on when you need it
+- Stream to any **RTMP or SRT** server, in **H.264 or H.265**
+- **Saved targets** — name them, switch between them, each with its own quality (presets from 480p30 to 1080p60, or a custom advanced setup)
+- **Adapts to your connection** — drops bitrate when the link is weak and **reconnects automatically** if it drops (great for cellular / on the move)
+- **Keeps streaming with the screen off** — the preview is optional, so it sips battery
 - Tap-to-focus, pinch-zoom, camera flip, torch, mute
-- Encrypted credential storage, ongoing notification with a stop action
-- OLED-dark Material 3 UI
-
-**Non-goals (by design):** cloud accounts, analytics/telemetry, a hosted relay, ad/tracking SDKs. Bring-your-own-server, fully local, fully private — see [PRIVACY.md](PRIVACY.md).
+- Your stream passwords are stored **encrypted on the device** — and Opticast never sends anything to anyone except the server you chose
 
 ## Install
 
-- **GitHub Releases** — grab the signed APK from the [latest release](https://github.com/teop23/opticast/releases) and sideload it.
-- **[Obtainium](https://github.com/ImranR98/Obtainium)** — add `https://github.com/teop23/opticast` for auto-updates.
+- **APK** — download the latest from [Releases](https://github.com/teop23/opticast/releases) and install it (you may need to allow installing from unknown sources).
+- **Auto-updates** — add `https://github.com/teop23/opticast` to [Obtainium](https://github.com/ImranR98/Obtainium).
 
-You'll also need a server to stream to (e.g. [MediaMTX](https://github.com/bluenviron/mediamtx)) and a player/OBS to view it.
+Requires Android 8.0 (Oreo) or newer.
 
-## Build
+## Privacy
+
+Opticast collects nothing and contains no ads, analytics, or trackers. Your video and credentials go only to the server you enter. Full details: [PRIVACY.md](PRIVACY.md).
+
+## Building it yourself
 
 ```bash
-./gradlew testDebugUnitTest      # unit tests
-./gradlew assembleDebug          # debug APK
-./gradlew installDebug           # install to a connected device
-./gradlew assembleRelease        # signed release (needs keystore.properties, see below)
+./gradlew installDebug      # build & install a debug build to a connected device
+./gradlew testDebugUnitTest # run the tests
+./gradlew assembleRelease   # signed release (needs a keystore.properties at the repo root)
 ```
 
-**Toolchain:** AGP 8.11.1, Gradle 8.13, Kotlin 2.3.21, compileSdk 36, JDK 17+.
-
-Release signing is read from a `keystore.properties` at the repo root (git-ignored):
-
-```properties
-storeFile=opticast-release.jks
-storePassword=…
-keyAlias=…
-keyPassword=…
-```
-
-Without it, `assembleRelease` still builds (unsigned).
-
-## Security
-
-Stream keys/passphrases are stored in **Android Keystore-backed encrypted storage**; the editor warns when a target would send credentials/video unencrypted to a remote host; service/receiver components are non-exported; `allowBackup=false`. Asks for **camera, mic, and network only**.
+Built with Jetpack Compose on top of [RootEncoder](https://github.com/pedroSG94/RootEncoder).
 
 ## License
 
-GPL-3.0 — see [LICENSE](LICENSE). Built on RootEncoder (Apache-2.0).
+[GPL-3.0](LICENSE). Free to use, study, share, and modify — and it stays that way.
