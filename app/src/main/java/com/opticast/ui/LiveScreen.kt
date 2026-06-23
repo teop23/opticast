@@ -3,15 +3,23 @@ package com.opticast.ui
 import android.graphics.SurfaceTexture
 import android.view.MotionEvent
 import android.view.TextureView
+import android.view.ViewConfiguration
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AllInclusive
 import androidx.compose.material.icons.filled.Cameraswitch
+import androidx.compose.material.icons.filled.CenterFocusStrong
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.FlashlightOff
 import androidx.compose.material.icons.filled.FlashlightOn
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.Visibility
@@ -21,8 +29,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -31,9 +42,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.opticast.model.FocusMode
 import com.opticast.model.StreamState
 import com.opticast.stream.RootEncoderBroadcaster
 import com.opticast.ui.theme.Amber
+import com.opticast.ui.theme.Lime
+import kotlinx.coroutines.delay
+import kotlin.math.hypot
 import com.opticast.ui.theme.LiveRed
 import com.opticast.ui.theme.MonoStat
 import com.opticast.ui.theme.SurfaceElevated
@@ -46,6 +61,11 @@ fun LiveScreen(vm: StreamViewModel, onConnections: () -> Unit) {
     val streaming = ui.streamState is StreamState.Live ||
         ui.streamState is StreamState.Connecting ||
         ui.streamState is StreamState.Reconnecting
+
+    // Tap-to-focus indicator: where the last successful focus tap landed, and a tick that
+    // re-fires the animation on each new tap.
+    val focusPoint = remember { mutableStateOf<Offset?>(null) }
+    var focusTick by remember { mutableStateOf(0) }
 
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
 
@@ -64,17 +84,69 @@ fun LiveScreen(vm: StreamViewModel, onConnections: () -> Unit) {
                             }
                             override fun onSurfaceTextureUpdated(s: SurfaceTexture) {}
                         }
-                        // Pinch to zoom, tap to focus (only meaningful while the preview is visible).
+                        // Pinch to zoom (2+ pointers); tap to focus (a single, stationary tap).
+                        // Tracking down position/time and the multi-touch flag avoids the old bug
+                        // where any ACTION_UP — including the end of a pinch or a drag — moved focus.
+                        val slop = ViewConfiguration.get(ctx).scaledTouchSlop
+                        var downX = 0f
+                        var downY = 0f
+                        var downT = 0L
+                        var multiTouch = false
+                        var moved = false
                         setOnTouchListener { v, event ->
                             val b = vm.broadcasterForPreview() as? RootEncoderBroadcaster
-                            if (event.pointerCount >= 2) b?.setZoom(event)
-                            else if (event.actionMasked == MotionEvent.ACTION_UP) b?.tapToFocus(v, event)
+                            when (event.actionMasked) {
+                                MotionEvent.ACTION_DOWN -> {
+                                    downX = event.x; downY = event.y
+                                    downT = System.currentTimeMillis()
+                                    multiTouch = false; moved = false
+                                }
+                                MotionEvent.ACTION_POINTER_DOWN -> {
+                                    multiTouch = true; b?.setZoom(event)
+                                }
+                                MotionEvent.ACTION_MOVE -> {
+                                    if (event.pointerCount >= 2) { multiTouch = true; b?.setZoom(event) }
+                                    else if (hypot(event.x - downX, event.y - downY) > slop) moved = true
+                                }
+                                MotionEvent.ACTION_UP -> {
+                                    val dt = System.currentTimeMillis() - downT
+                                    if (!multiTouch && !moved && dt < 300L &&
+                                        b?.tapToFocus(v, event) == true
+                                    ) {
+                                        focusPoint.value = Offset(event.x, event.y)
+                                        focusTick++
+                                    }
+                                }
+                            }
                             true
                         }
                     }
                 },
                 modifier = Modifier.fillMaxSize()
             )
+
+            // Animated focus square at the tapped point: snaps in slightly larger, settles,
+            // holds briefly, then fades. Cleared by the LaunchedEffect when done.
+            focusPoint.value?.let { pt ->
+                val scale = remember { Animatable(1.35f) }
+                val alpha = remember { Animatable(1f) }
+                LaunchedEffect(focusTick) {
+                    scale.snapTo(1.35f); alpha.snapTo(1f)
+                    scale.animateTo(1f, tween(200))
+                    delay(650)
+                    alpha.animateTo(0f, tween(220))
+                    focusPoint.value = null
+                }
+                Canvas(Modifier.fillMaxSize()) {
+                    val s = 34.dp.toPx() * scale.value
+                    drawRect(
+                        color = Lime.copy(alpha = alpha.value),
+                        topLeft = Offset(pt.x - s, pt.y - s),
+                        size = Size(s * 2, s * 2),
+                        style = Stroke(width = 1.5.dp.toPx())
+                    )
+                }
+            }
         } else {
             Column(
                 Modifier.align(Alignment.Center),
@@ -117,6 +189,7 @@ fun LiveScreen(vm: StreamViewModel, onConnections: () -> Unit) {
                 ControlButton(if (ui.previewEnabled) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
                     "Preview", active = ui.previewEnabled) { vm.togglePreview() }
                 ControlButton(Icons.Filled.Cameraswitch, "Flip") { vm.switchCamera() }
+                FocusControl(ui.focusMode) { vm.setFocusMode(it) }
                 ControlButton(if (ui.muted) Icons.Filled.MicOff else Icons.Filled.Mic,
                     "Mic", active = ui.muted) { vm.toggleMute() }
                 ControlButton(if (ui.torch) Icons.Filled.FlashlightOn else Icons.Filled.FlashlightOff,
@@ -187,12 +260,12 @@ private fun ControlButton(icon: ImageVector, label: String, active: Boolean = fa
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         FilledIconButton(
             onClick = onClick,
-            shape = RoundedCornerShape(14.dp),
+            shape = RoundedCornerShape(13.dp),
             colors = IconButtonDefaults.filledIconButtonColors(
                 containerColor = SurfaceElevated, contentColor = tint
             ),
-            modifier = Modifier.size(52.dp)
-        ) { Icon(icon, label, modifier = Modifier.size(22.dp)) }
+            modifier = Modifier.size(46.dp)
+        ) { Icon(icon, label, modifier = Modifier.size(20.dp)) }
         Spacer(Modifier.height(4.dp))
         Text(
             label,
@@ -201,9 +274,53 @@ private fun ControlButton(icon: ImageVector, label: String, active: Boolean = fa
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center,
-            modifier = Modifier.widthIn(max = 64.dp)
+            modifier = Modifier.widthIn(max = 54.dp)
         )
     }
+}
+
+/** Focus-mode control: a single button (icon reflects the active mode) that opens an explicit
+ *  menu of all modes — nothing is hidden behind a blind cycle. */
+@Composable
+private fun FocusControl(mode: FocusMode, onSelect: (FocusMode) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    val icon = when (mode) {
+        FocusMode.AUTO -> Icons.Filled.CenterFocusStrong
+        FocusMode.LOCKED -> Icons.Filled.Lock
+        FocusMode.INFINITY -> Icons.Filled.AllInclusive
+    }
+    Box {
+        ControlButton(icon, "Focus", active = mode != FocusMode.AUTO) { open = true }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            FocusMenuItem("Auto", "Continuous autofocus", Icons.Filled.CenterFocusStrong,
+                mode == FocusMode.AUTO) { onSelect(FocusMode.AUTO); open = false }
+            FocusMenuItem("Lock", "Freeze focus where it is", Icons.Filled.Lock,
+                mode == FocusMode.LOCKED) { onSelect(FocusMode.LOCKED); open = false }
+            FocusMenuItem("Infinity", "Far scene; ignore near objects", Icons.Filled.AllInclusive,
+                mode == FocusMode.INFINITY) { onSelect(FocusMode.INFINITY); open = false }
+        }
+    }
+}
+
+@Composable
+private fun FocusMenuItem(
+    title: String, subtitle: String, icon: ImageVector, selected: Boolean, onClick: () -> Unit
+) {
+    val accent = MaterialTheme.colorScheme.primary
+    DropdownMenuItem(
+        text = {
+            Column {
+                Text(title, style = MaterialTheme.typography.bodyMedium,
+                    color = if (selected) accent else MaterialTheme.colorScheme.onSurface)
+                Text(subtitle, style = MaterialTheme.typography.labelSmall, color = TextFaint)
+            }
+        },
+        leadingIcon = { Icon(icon, null, tint = if (selected) accent else TextMuted) },
+        trailingIcon = if (selected) {
+            { Icon(Icons.Filled.Check, null, tint = accent) }
+        } else null,
+        onClick = onClick
+    )
 }
 
 private fun formatUptime(s: Long): String = "%02d:%02d".format(s / 60, s % 60)

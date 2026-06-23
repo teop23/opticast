@@ -68,6 +68,7 @@ class StreamCoordinator(
     override fun setVideoBitrate(bps: Int) = inner.setVideoBitrate(bps)
     override fun setMuted(muted: Boolean) = inner.setMuted(muted)
     override fun setTorch(on: Boolean) = inner.setTorch(on)
+    override fun setFocusMode(mode: com.opticast.model.FocusMode) = inner.setFocusMode(mode)
     override fun release() { reconnectJob?.cancel(); inner.release() }
 
     /** The underlying engine, so the UI can attach a camera preview to it. */

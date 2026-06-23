@@ -19,6 +19,10 @@ class InMemoryProfileStore : ProfileStore {
     }
     override fun selectedId() = selected.asStateFlow()
     override suspend fun setSelectedId(id: String?) { selected.value = id }
+
+    private val focus = MutableStateFlow<String?>(null)
+    override fun focusMode() = focus.asStateFlow()
+    override suspend fun setFocusMode(mode: String) { focus.value = mode }
 }
 
 class InMemorySecretStore : SecretStore {

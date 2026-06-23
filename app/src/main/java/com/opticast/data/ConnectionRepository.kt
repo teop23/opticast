@@ -26,4 +26,7 @@ class ConnectionRepository(
 
     fun selectedId(): Flow<String?> = profileStore.selectedId()
     suspend fun setSelected(id: String?) = profileStore.setSelectedId(id)
+
+    fun focusMode(): Flow<String?> = profileStore.focusMode()
+    suspend fun setFocusMode(mode: String) = profileStore.setFocusMode(mode)
 }

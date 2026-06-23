@@ -1,6 +1,7 @@
 package com.opticast.stream
 
 import com.opticast.model.Connection
+import com.opticast.model.FocusMode
 import com.opticast.model.StreamState
 import com.opticast.model.StreamStats
 import kotlinx.coroutines.flow.StateFlow
@@ -22,5 +23,6 @@ interface Broadcaster {
     fun setVideoBitrate(bps: Int)
     fun setMuted(muted: Boolean)
     fun setTorch(on: Boolean)
+    fun setFocusMode(mode: FocusMode)
     fun release()
 }

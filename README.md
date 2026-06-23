@@ -18,7 +18,7 @@ It is built on [RootEncoder](https://github.com/pedroSG94/RootEncoder) for captu
 - **Adaptive bitrate:** the encoder drops bitrate when the link is congested and recovers when it clears.
 - **Reconnect:** automatic reconnection with capped exponential backoff on connection loss.
 - **Foreground service:** streaming runs in a typed foreground service with a wake lock, so it continues with the screen off or the app backgrounded. Start/stop is exposed in the notification.
-- **Camera controls:** front/back switch, tap-to-focus, pinch-to-zoom, torch.
+- **Camera controls:** front/back switch, pinch-to-zoom, torch, tap-to-focus, and a focus mode selector — Auto (continuous), Lock (freeze current), or Infinity (far-scene lock for fixed mounts where a near object would otherwise steal focus).
 - **Optional preview:** the on-screen camera preview is off by default to reduce CPU and battery cost; the stream runs regardless.
 - **Credential storage:** stream keys and passphrases are stored with Android Keystore-backed encryption.
 - **No network access beyond the configured server.** No analytics, ads, or telemetry.

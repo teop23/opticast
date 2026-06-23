@@ -15,6 +15,7 @@ import org.json.JSONObject
 private val Context.dataStore by preferencesDataStore(name = "opticast_profiles")
 private val PROFILES_KEY = stringPreferencesKey("profiles_json")
 private val SELECTED_KEY = stringPreferencesKey("selected_id")
+private val FOCUS_KEY = stringPreferencesKey("focus_mode")
 
 class DataStoreProfileStore(private val context: Context) : ProfileStore {
 
@@ -43,6 +44,12 @@ class DataStoreProfileStore(private val context: Context) : ProfileStore {
         context.dataStore.edit { prefs ->
             if (id == null) prefs.remove(SELECTED_KEY) else prefs[SELECTED_KEY] = id
         }
+    }
+
+    override fun focusMode(): Flow<String?> = context.dataStore.data.map { it[FOCUS_KEY] }
+
+    override suspend fun setFocusMode(mode: String) {
+        context.dataStore.edit { prefs -> prefs[FOCUS_KEY] = mode }
     }
 
     private fun encode(list: List<Connection>): String {

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.opticast.data.ConnectionRepository
 import com.opticast.model.Connection
+import com.opticast.model.FocusMode
 import com.opticast.model.StreamState
 import com.opticast.model.StreamStats
 import com.opticast.stream.Broadcaster
@@ -17,6 +18,7 @@ data class UiState(
     val selected: Connection? = null,
     val muted: Boolean = false,
     val torch: Boolean = false,
+    val focusMode: FocusMode = FocusMode.AUTO,
     val previewEnabled: Boolean = false,   // off by default to save battery/CPU
     val connections: List<Connection> = emptyList()
 )
@@ -32,6 +34,13 @@ class StreamViewModel(
     init {
         viewModelScope.launch { broadcaster.state.collect { s -> _ui.update { it.copy(streamState = s) } } }
         viewModelScope.launch { broadcaster.stats.collect { s -> _ui.update { it.copy(stats = s) } } }
+        viewModelScope.launch {
+            // restore persisted focus mode and push it to the engine (applied once the camera runs)
+            val mode = repository.focusMode().first()
+                ?.let { runCatching { FocusMode.valueOf(it) }.getOrNull() } ?: FocusMode.AUTO
+            broadcaster.setFocusMode(mode)
+            _ui.update { it.copy(focusMode = mode) }
+        }
         viewModelScope.launch {
             val savedId = repository.selectedId().first()
             repository.connections().collect { list ->
@@ -78,6 +87,12 @@ class StreamViewModel(
     }
 
     fun togglePreview() = _ui.update { it.copy(previewEnabled = !it.previewEnabled) }
+
+    fun setFocusMode(mode: FocusMode) {
+        broadcaster.setFocusMode(mode)
+        _ui.update { it.copy(focusMode = mode) }
+        viewModelScope.launch { repository.setFocusMode(mode.name) }
+    }
 
     suspend fun save(c: Connection) = repository.save(c)
     suspend fun delete(id: String) = repository.delete(id)

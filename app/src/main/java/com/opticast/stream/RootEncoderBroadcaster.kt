@@ -1,10 +1,12 @@
 package com.opticast.stream
 
 import android.content.Context
+import android.hardware.camera2.CaptureRequest
 import android.view.MotionEvent
 import android.view.TextureView
 import android.view.View
 import com.opticast.model.Connection
+import com.opticast.model.FocusMode
 import com.opticast.model.StreamCodec
 import com.opticast.model.StreamState
 import com.opticast.model.StreamStats
@@ -27,6 +29,7 @@ class RootEncoderBroadcaster(context: Context) : Broadcaster, ConnectChecker {
     private var startedAtMs = 0L
     private var previewView: TextureView? = null
     private var prepared = false
+    private var focusMode = FocusMode.AUTO
 
     /** prepareVideo/prepareAudio require stream + preview stopped; sets [prepared]. */
     private fun prepare(width: Int, height: Int, videoBitrate: Int, fps: Int, audioBitrate: Int): Boolean {
@@ -60,6 +63,7 @@ class RootEncoderBroadcaster(context: Context) : Broadcaster, ConnectChecker {
         state.value = StreamState.Connecting
         startedAtMs = System.currentTimeMillis()
         stream.startStream(connection.toEndpoint())
+        applyFocusMode()   // camera is live now; (re)assert the chosen focus mode
     }
 
     override fun stop() {
@@ -77,6 +81,7 @@ class RootEncoderBroadcaster(context: Context) : Broadcaster, ConnectChecker {
             prepare(1280, 720, 2_500_000, 30, 128_000)
         }
         if (!stream.isOnPreview) stream.startPreview(textureView)
+        applyFocusMode()   // preview started the camera; assert the chosen focus mode
     }
     fun detachPreview() {
         if (stream.isOnPreview) stream.stopPreview()
@@ -87,10 +92,33 @@ class RootEncoderBroadcaster(context: Context) : Broadcaster, ConnectChecker {
     private val camera get() = stream.videoSource as? Camera2Source
     private val mic get() = stream.audioSource as? MicrophoneSource
 
-    fun tapToFocus(view: View, event: MotionEvent) { camera?.tapToFocus(view, event) }
+    /** One-shot tap-to-focus, only in AUTO mode (locked/infinity modes own the focus). Returns
+     *  true if the camera applied it, so the UI can show its focus indicator only when real. */
+    fun tapToFocus(view: View, event: MotionEvent): Boolean =
+        if (focusMode == FocusMode.AUTO) camera?.tapToFocus(view, event) == true else false
+
     fun setZoom(event: MotionEvent) { camera?.setZoom(event) }
 
-    override fun switchCamera() { camera?.switchCamera() }
+    override fun setFocusMode(mode: FocusMode) {
+        focusMode = mode
+        applyFocusMode()
+    }
+
+    /** Asserts [focusMode] on the camera. No-op if the camera isn't running yet; the start/preview
+     *  paths call this again once it is. Best-effort: unsupported modes simply don't take. */
+    private fun applyFocusMode() {
+        val cam = camera ?: return
+        when (focusMode) {
+            FocusMode.AUTO -> cam.enableAutoFocus()
+            FocusMode.LOCKED -> cam.disableAutoFocus()   // freeze at current distance
+            FocusMode.INFINITY -> cam.setCustomRequest { b ->
+                b.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_OFF)
+                b.set(CaptureRequest.LENS_FOCUS_DISTANCE, 0f)   // 0 diopters = infinity
+            }
+        }
+    }
+
+    override fun switchCamera() { camera?.switchCamera(); applyFocusMode() }
     override fun setVideoBitrate(bps: Int) { stream.setVideoBitrateOnFly(bps) }
     override fun setMuted(muted: Boolean) { mic?.let { if (muted) it.mute() else it.unMute() } }
     override fun setTorch(on: Boolean) { camera?.let { if (on) it.enableLantern() else it.disableLantern() } }

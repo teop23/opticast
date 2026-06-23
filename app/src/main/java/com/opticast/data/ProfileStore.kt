@@ -10,4 +10,8 @@ interface ProfileStore {
     suspend fun delete(id: String)
     fun selectedId(): Flow<String?>
     suspend fun setSelectedId(id: String?)
+
+    /** App-level camera focus mode (FocusMode.name), persisted across sessions. */
+    fun focusMode(): Flow<String?>
+    suspend fun setFocusMode(mode: String)
 }

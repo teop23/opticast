@@ -1,6 +1,7 @@
 package com.opticast.fakes
 
 import com.opticast.model.Connection
+import com.opticast.model.FocusMode
 import com.opticast.model.StreamState
 import com.opticast.model.StreamStats
 import com.opticast.stream.Broadcaster
@@ -15,6 +16,7 @@ class FakeBroadcaster : Broadcaster {
     var lastBitrate: Int? = null
     var mutedFlag = false
     var torchFlag = false
+    var focusModeFlag = FocusMode.AUTO
     var switchCount = 0
     var released = false
 
@@ -27,6 +29,7 @@ class FakeBroadcaster : Broadcaster {
     override fun setVideoBitrate(bps: Int) { lastBitrate = bps }
     override fun setMuted(muted: Boolean) { mutedFlag = muted }
     override fun setTorch(on: Boolean) { torchFlag = on }
+    override fun setFocusMode(mode: FocusMode) { focusModeFlag = mode }
     override fun release() { released = true }
 
     // Test helpers
