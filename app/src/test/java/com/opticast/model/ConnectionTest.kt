@@ -24,7 +24,7 @@ class ConnectionTest {
     @Test fun `srt endpoint puts path in streamid and passphrase in query`() {
         val c = base().copy(protocol = StreamProtocol.SRT, port = 8890, secret = "myphrase")
         assertEquals(
-            "srt://192.168.178.208:8890?streamid=publish/live/ride&passphrase=myphrase",
+            "srt://192.168.178.208:8890?streamid=publish:live/ride&passphrase=myphrase",
             c.toEndpoint()
         )
     }
@@ -32,7 +32,7 @@ class ConnectionTest {
     @Test fun `srt endpoint without passphrase omits query passphrase`() {
         val c = base().copy(protocol = StreamProtocol.SRT, port = 8890, secret = null)
         assertEquals(
-            "srt://192.168.178.208:8890?streamid=publish/live/ride",
+            "srt://192.168.178.208:8890?streamid=publish:live/ride",
             c.toEndpoint()
         )
     }

@@ -4,6 +4,13 @@ All notable changes to Opticast are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/) and the format of
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.2] - 2026-09-13
+
+### Fixed
+- SRT connections now use the `publish:<path>` stream ID format, so publishing
+  to MediaMTX works (the previous `publish/<path>` form was rejected).
+  Thanks @tortillas5 (#1).
+
 ## [1.0.1] - 2026-06-23
 
 ### Added
@@ -32,5 +39,6 @@ All notable changes to Opticast are documented here. This project adheres to
 - Tap-to-focus, pinch-zoom, camera switch, torch, mute.
 - Stream credentials stored with Android Keystore-backed encryption.
 
+[1.0.2]: https://github.com/teop23/opticast/releases/tag/v1.0.2
 [1.0.1]: https://github.com/teop23/opticast/releases/tag/v1.0.1
 [1.0.0]: https://github.com/teop23/opticast/releases/tag/v1.0.0
