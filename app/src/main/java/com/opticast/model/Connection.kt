@@ -26,7 +26,7 @@ data class Connection(
         }
         StreamProtocol.SRT -> {
             val pass = if (secret.isNullOrBlank()) "" else "&passphrase=$secret"
-            "srt://$host:$port?streamid=publish/$path$pass"
+            "srt://$host:$port?streamid=publish:$path$pass"
         }
     }
 }
